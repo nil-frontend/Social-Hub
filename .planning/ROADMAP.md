@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart TD
-    P1["Phase 1: Project Scaffolding & Apple Design System"] --> P2["Phase 2: Supabase Auth & Multi-Account Database Schema"]
+    P1["Phase 1: Project Scaffolding & Apple Design System (Done)"] --> P2["Phase 2: Supabase Auth & Multi-Account Database Schema"]
     P2 --> P3["Phase 3: YouTube OAuth & Channel Connection Engine"]
     P3 --> P4["Phase 4: Resumable Video Upload & Streaming Pipeline"]
     P4 --> P5["Phase 5: Metadata Editor & Scheduled Publishing Engine"]
@@ -13,14 +13,15 @@ flowchart TD
 
 ---
 
-### Phase 1: Project Scaffolding & Apple Design System Setup
-- Initialize Next.js 15 (App Router, TypeScript, React 19, Tailwind CSS v3/v4).
-- Configure Apple Design tokens from `DESIGN.md` in Tailwind theme:
+### [x] Phase 1: Project Scaffolding & Apple Design System Setup
+- [x] Initialize Next.js 15 (App Router, TypeScript, React 19, Tailwind CSS v3).
+- [x] Configure Apple Design tokens from `DESIGN.md` in Tailwind theme:
   - Colors: Action Blue (`#0066cc`), Parchment (`#f5f5f7`), Ink (`#1d1d1f`), Hairlines.
   - Typography: SF Pro system font stack, display tracking, 17px body text.
   - Components: Pill button variants, ghost pills, hairline cards, frosted sub-nav header.
-- Scaffold base layout with global navigation, sidebar, and breadcrumbs.
-- Set up environment variable schemas (`.env.example` and validation).
+- [x] Scaffold base layout with global navigation, sidebar, and breadcrumbs.
+- [x] Set up environment variable schemas (`.env.example` and validation).
+- [x] Verified zero-error Next.js production build with all routes prerendered.
 
 ### Phase 2: Supabase Auth & Multi-Account Database Schema
 - Initialize Supabase client for Next.js (SSR / cookie-based session handling).
