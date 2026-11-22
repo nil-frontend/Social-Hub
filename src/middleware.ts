@@ -15,15 +15,24 @@ export async function middleware(request: NextRequest) {
   );
   const isLoginPath = pathname === "/login";
 
-  // Fast-path: Skip remote Supabase auth verification on public/unprotected paths
+  // Fast-path: Skip middleware auth logic on public routes (like /, /api/auth/...)
   if (!isProtectedPath && !isLoginPath) {
     return response;
   }
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // Defensive check: If environment variables are missing on Vercel deployment, don't crash
+  if (!supabaseUrl || !supabaseKey) {
+    console.warn(
+      "Middleware warning: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is not defined in environment variables."
+    );
+    return response;
+  }
+
+  try {
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -48,24 +57,25 @@ export async function middleware(request: NextRequest) {
           );
         },
       },
+    });
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // Redirect unauthenticated requests away from protected routes to /login
+    if (isProtectedPath && !user) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("redirectTo", pathname);
+      return NextResponse.redirect(loginUrl);
     }
-  );
 
-  // Refresh user session if visiting protected route or login page
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // Redirect unauthenticated requests to /login
-  if (isProtectedPath && !user) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("redirectTo", pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // Redirect authenticated requests away from /login to /dashboard
-  if (isLoginPath && user) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    // Redirect authenticated requests away from /login to /dashboard
+    if (isLoginPath && user) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  } catch (err) {
+    console.error("Middleware Supabase execution error:", err);
   }
 
   return response;
