@@ -1,0 +1,9 @@
+{
+  "mode": "interactive",
+  "model_profile": "balanced",
+  "commit_format": "conventional",
+  "branching": "trunk",
+  "design_system": "apple-design-analysis",
+  "primary_platform": "youtube",
+  "supported_future_platforms": ["facebook", "instagram"]
+}

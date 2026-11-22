@@ -1,0 +1,73 @@
+# Social-Hub: Roadmap (V1 Milestone)
+
+## Milestone 1: Multi-Channel YouTube Video Distribution Platform
+
+```mermaid
+flowchart TD
+    P1["Phase 1: Project Scaffolding & Apple Design System"] --> P2["Phase 2: Supabase Auth & Multi-Account Database Schema"]
+    P2 --> P3["Phase 3: YouTube OAuth & Channel Connection Engine"]
+    P3 --> P4["Phase 4: Resumable Video Upload & Streaming Pipeline"]
+    P4 --> P5["Phase 5: Metadata Editor & Scheduled Publishing Engine"]
+    P5 --> P6["Phase 6: Multi-Channel Orchestrator & Activity Dashboard"]
+```
+
+---
+
+### Phase 1: Project Scaffolding & Apple Design System Setup
+- Initialize Next.js 15 (App Router, TypeScript, React 19, Tailwind CSS v3/v4).
+- Configure Apple Design tokens from `DESIGN.md` in Tailwind theme:
+  - Colors: Action Blue (`#0066cc`), Parchment (`#f5f5f7`), Ink (`#1d1d1f`), Hairlines.
+  - Typography: SF Pro system font stack, display tracking, 17px body text.
+  - Components: Pill button variants, ghost pills, hairline cards, frosted sub-nav header.
+- Scaffold base layout with global navigation, sidebar, and breadcrumbs.
+- Set up environment variable schemas (`.env.example` and validation).
+
+### Phase 2: Supabase Auth & Multi-Account Database Schema
+- Initialize Supabase client for Next.js (SSR / cookie-based session handling).
+- Create PostgreSQL migrations in Supabase:
+  - `profiles` table linked to `auth.users`.
+  - `social_accounts` table (polymorphic design for `youtube`, `facebook`, `instagram`).
+  - `video_drafts` table (title, description, tags, privacy, COPPA, schedule, thumbnail).
+  - `publish_tasks` table (tracking per-channel upload status, progress, video IDs, error logs).
+  - Row Level Security (RLS) policies for strict tenant data isolation.
+- Implement Auth UI (Sign In, Sign Up, Password Reset) styled with Apple aesthetics.
+- Add Next.js auth middleware protecting dashboard routes.
+
+### Phase 3: YouTube OAuth & Channel Connection Engine
+- Build Google OAuth 2.0 flow:
+  - Route handler `/api/auth/youtube/connect` generating authorization URL with `access_type=offline`, `prompt=consent`, and state validation.
+  - Route handler `/api/auth/youtube/callback` exchanging code for access and refresh tokens.
+  - Fetch channel profile via `youtube.channels.list(mine=true, part=snippet,statistics)`.
+  - Store encrypted tokens and channel metadata in `social_accounts`.
+- Build token refresh manager ensuring valid access tokens before upload calls.
+- Build "Connected Channels" page:
+  - Add Channel button.
+  - Grid of connected channels showing Channel Avatar, Title, Subscriber Count, and Disconnect button.
+  - Support connecting multiple channels seamlessly.
+
+### Phase 4: Resumable Video Upload & Streaming Pipeline
+- Build client-side drag-and-drop file uploader component with preview:
+  - Video format validation (MP4, MOV, WebM up to 1GB).
+  - Thumbnail picker with aspect ratio preview.
+- Implement YouTube Resumable Upload protocol:
+  - API endpoint `/api/youtube/upload/initiate`: calls YouTube Data API `videos.insert(uploadType=resumable)` on behalf of the selected channel.
+  - Returns direct Google upload session URI to browser.
+  - Client-side chunked uploader: streams video directly to Google server with byte-level progress reporting and resume capability.
+
+### Phase 5: Metadata Editor & Scheduled Publishing Engine
+- Build comprehensive video details editor:
+  - Title input with character counter (max 100).
+  - Description textarea with character counter (max 5000).
+  - Tags input with badge/chip UI (max 500 chars).
+  - Category selector (Entertainment, Education, Gaming, Tech, etc.).
+  - Privacy status dropdown (Public, Unlisted, Private).
+  - COPPA compliance checkbox ("Yes, it's made for kids" / "No, not made for kids").
+  - Scheduled Release picker (Date + Time input, converts to ISO 8601 `publishAt` for YouTube when privacy is `private`).
+  - Custom thumbnail upload and association (`thumbnails.set` API).
+
+### Phase 6: Multi-Channel Orchestrator & Activity Dashboard
+- Implement Multi-Channel selector allowing creators to check which connected channels receive the video.
+- Multi-channel dispatch engine: initiates parallel or sequenced resumable upload sessions across all chosen channels.
+- Real-time progress dashboard per channel (Percentage bar, Uploading, Processing, Published with watch link, or Failed with retry).
+- Publishing History view displaying all past distribution jobs with filter by channel and status.
+- Final end-to-end integration test and verification against user specifications.
