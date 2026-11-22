@@ -2,22 +2,24 @@
 
 ## Current Status
 - **Current Milestone**: Milestone 1 (V1 - Multi-Channel YouTube Video Distribution Platform)
-- **Current Phase**: Phase 4 Complete & Verified | Phase 5 Ready to Plan
+- **Current Phase**: Phase 5 (Metadata Editor & Scheduled Publishing Engine) - Planned & Ready for Execution
 - **Completed Phases**:
   - [x] Phase 0: Project Discovery, User Specifications, & GSD Setup
   - [x] Phase 1: Project Scaffolding & Apple Design System Setup
   - [x] Phase 2: Supabase Auth & Multi-Account Database Schema
   - [x] Phase 3: YouTube OAuth & Channel Connection Engine
   - [x] Phase 4: Resumable Video Upload & Streaming Pipeline
-- **Next Phase**: Phase 5 (Metadata Editor & Scheduled Publishing Engine)
+- **Active Plans in Phase 5**:
+  - `05-01-PLAN.md`: YouTube Category Dictionary & Custom Thumbnail API Handler (Wave 1)
+  - `05-02-PLAN.md`: Rich Tag Input & Future Schedule Picker Components (Wave 2)
+  - `05-03-PLAN.md`: Video Drafts Persistence & Full Metadata Integration (Wave 3)
 
-## Phase 4 Implementation Summary
-- Built Resumable Upload session initialization endpoint `/api/youtube/upload/initiate` ensuring fresh access tokens via `token-manager.ts` and requesting Google's session URI.
-- Implemented `ResumableUploader` class (`src/lib/youtube/resumable-uploader.ts`) for browser-to-Google direct streaming with real-time percentage, byte counting, speed calculation, abort control, and HTTP 308 resume recovery.
-- Built `VideoDropzone` component (`src/components/upload/video-dropzone.tsx`) supporting drag-and-drop, MP4/MOV/WebM validation up to 1GB, embedded video preview player, resolution/duration extraction, and memory lifecycle cleanup.
-- Created `ThumbnailPicker` component (`src/components/upload/thumbnail-picker.tsx`) with 16:9 preview.
-- Integrated `UploadWizard` into `/upload` combining channels selector, video dropzone, thumbnail picker, and publishing summaries.
-- Verified Next.js 15 production build passes with 0 errors across all 13 routes.
+## Completed Artifacts
+- [x] Live Supabase database with Row Level Security on all tables
+- [x] Google OAuth 2.0 multi-channel connection endpoints and secure token manager
+- [x] Resumable upload session initializer and client-side streaming engine
+- [x] Apple-styled media dropzone, preview player, and thumbnail picker
+- [x] Phase 5 plans authored (`RESEARCH.md`, `05-01-PLAN.md`, `05-02-PLAN.md`, `05-03-PLAN.md`)
 
 ## Next Immediate Command
-Run `/gsd-plan-phase 5` to plan rich metadata validation, category mapping, custom thumbnail attachment, and scheduled release execution.
+Run `/gsd-execute-phase 5` to execute Phase 5 plans.
