@@ -6,7 +6,7 @@
 flowchart TD
     P1["Phase 1: Project Scaffolding & Apple Design System (Done)"] --> P2["Phase 2: Supabase Auth & Multi-Account Database Schema (Done)"]
     P2 --> P3["Phase 3: YouTube OAuth & Channel Connection Engine (Done)"]
-    P3 --> P4["Phase 4: Resumable Video Upload & Streaming Pipeline"]
+    P3 --> P4["Phase 4: Resumable Video Upload & Streaming Pipeline (Done)"]
     P4 --> P5["Phase 5: Metadata Editor & Scheduled Publishing Engine"]
     P5 --> P6["Phase 6: Multi-Channel Orchestrator & Activity Dashboard"]
 ```
@@ -33,26 +33,21 @@ flowchart TD
 - [x] Next.js session middleware protecting dashboard routes.
 
 ### [x] Phase 3: YouTube OAuth & Channel Connection Engine
-- [x] Google OAuth 2.0 flow:
-  - [x] Route handler `/api/auth/youtube/connect` generating authorization URL with CSRF state cookie, `access_type=offline`, and `prompt=consent select_account` to easily link multiple channels.
-  - [x] Route handler `/api/auth/youtube/callback` exchanging code for access and refresh tokens.
-  - [x] Fetch channel profile via `youtube.channels.list(mine=true, part=snippet,statistics)`.
-  - [x] Encrypt tokens at rest and store channel metadata in `social_accounts`.
-- [x] Token refresh manager (`src/lib/youtube/token-manager.ts`) automatically detecting expired tokens and rotating with Google.
-- [x] Channel management server actions (`getConnectedChannels`, `disconnectChannel`, `toggleChannelActive`).
-- [x] Apple-styled "Connected Channels" page (`/channels`):
-  - [x] Multi-channel grid with avatars, handles, subscriber count badges, status toggles, and disconnect actions.
-  - [x] Setup banner warning if Google Cloud OAuth credentials need configuration.
-  - [x] Real-time channel metrics dynamically updated in `/dashboard`.
+- [x] Google OAuth 2.0 flow with CSRF protection and multi-channel selection (`prompt=consent select_account`).
+- [x] Channel profile discovery (`youtube.channels.list`) and token encryption at rest.
+- [x] Automated token refresh rotation engine (`src/lib/youtube/token-manager.ts`).
+- [x] Channel server actions and Apple-styled channel cards on `/channels`.
+- [x] Real-time channel metrics in overview dashboard.
 
-### Phase 4: Resumable Video Upload & Streaming Pipeline
-- Build client-side drag-and-drop file uploader component with preview:
-  - Video format validation (MP4, MOV, WebM up to 1GB).
-  - Thumbnail picker with aspect ratio preview.
-- Implement YouTube Resumable Upload protocol:
-  - API endpoint `/api/youtube/upload/initiate`: calls YouTube Data API `videos.insert(uploadType=resumable)` on behalf of the selected channel.
-  - Returns direct Google upload session URI to browser.
-  - Client-side chunked uploader: streams video directly to Google server with byte-level progress reporting and resume capability.
+### [x] Phase 4: Resumable Video Upload & Streaming Pipeline
+- [x] Server-side resumable upload session initializer:
+  - [x] Route handler `/api/youtube/upload/initiate` verifying channel ownership, rotating expired tokens via `getValidAccessToken()`, calling YouTube Data API `videos.insert(uploadType=resumable)`, and returning direct Google upload session URI.
+- [x] Client-side direct-to-Google streaming engine:
+  - [x] `ResumableUploader` class (`src/lib/youtube/resumable-uploader.ts`) using `XMLHttpRequest` for precise byte-level percentage tracking, upload speed calculation, abort control, and HTTP 308 resume recovery.
+- [x] Apple-styled media uploader UI:
+  - [x] `VideoDropzone` component (`src/components/upload/video-dropzone.tsx`) with drag-and-drop animation, format validation (MP4, MOV, WebM up to 1GB), in-browser `<video>` preview player, duration/resolution detection, and memory cleanup (`URL.revokeObjectURL`).
+  - [x] `ThumbnailPicker` component (`src/components/upload/thumbnail-picker.tsx`) with 16:9 aspect preview.
+  - [x] Integrated `UploadWizard` (`src/components/upload/upload-wizard.tsx`) into `/upload`.
 
 ### Phase 5: Metadata Editor & Scheduled Publishing Engine
 - Build comprehensive video details editor:
