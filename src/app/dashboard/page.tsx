@@ -18,7 +18,8 @@ import {
   ExternalLink,
   Layers,
   AlertCircle,
-  Loader2
+  Loader2,
+  Calendar
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -161,12 +162,10 @@ export default async function DashboardPage() {
                   const isProcessing = task.status === "processing";
                   const isPending = task.status === "pending";
 
-                  const formattedDate = new Date(task.created_at).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  });
+                  const isScheduledRelease = Boolean(task.scheduled_publish_at);
+                  const isFutureScheduled =
+                    isScheduledRelease &&
+                    new Date(task.scheduled_publish_at!) > new Date();
 
                   const watchUrl =
                     task.platform_video_url ||
@@ -198,20 +197,40 @@ export default async function DashboardPage() {
                             <h4 className="text-[14px] font-medium text-apple-ink tracking-tight truncate">
                               {task.video_title}
                             </h4>
-                            <div className="flex items-center gap-2 text-xs text-apple-ink-muted">
-                              <span className="truncate max-w-[150px]">{task.channel_name}</span>
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-apple-ink-muted">
+                              <span className="truncate max-w-[150px] font-medium text-apple-ink">{task.channel_name}</span>
                               <span>•</span>
-                              <LocalTime date={task.created_at} format="short" />
+                              <span>
+                                <span className="text-apple-ink-subtle">Uploaded:</span>{" "}
+                                <LocalTime date={task.created_at} format="short" />
+                              </span>
+                              {task.scheduled_publish_at && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-apple-blue font-medium flex items-center gap-1 bg-apple-blue/5 px-1.5 py-0.5 rounded border border-apple-blue/15">
+                                    <Calendar className="w-3 h-3 text-apple-blue" />
+                                    <span>Scheduled:</span>
+                                    <LocalTime date={task.scheduled_publish_at} format="short" />
+                                  </span>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-3 flex-shrink-0">
                           {isPublished && (
-                            <AppleBadge variant="success" size="sm">
-                              <CheckCircle2 className="w-3 h-3" />
-                              <span>Published</span>
-                            </AppleBadge>
+                            isFutureScheduled ? (
+                              <AppleBadge variant="warning" size="sm">
+                                <Clock className="w-3 h-3" />
+                                <span>Scheduled</span>
+                              </AppleBadge>
+                            ) : (
+                              <AppleBadge variant="success" size="sm">
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>Published</span>
+                              </AppleBadge>
+                            )
                           )}
                           {isProcessing && (
                             <AppleBadge variant="warning" size="sm">

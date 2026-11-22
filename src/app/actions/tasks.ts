@@ -9,6 +9,7 @@ export interface PublishTaskWithDetails extends PublishTask {
   channel_name: string;
   channel_avatar_url: string | null;
   video_title: string;
+  scheduled_publish_at: string | null;
 }
 
 /**
@@ -103,7 +104,8 @@ export async function getPublishHistory(): Promise<PublishTaskWithDetails[]> {
           account_avatar_url
         ),
         video_drafts (
-          title
+          title,
+          scheduled_publish_at
         )
       `)
       .eq("user_id", user.id)
@@ -127,6 +129,7 @@ export async function getPublishHistory(): Promise<PublishTaskWithDetails[]> {
       channel_name: row.social_accounts?.account_name || "YouTube Channel",
       channel_avatar_url: row.social_accounts?.account_avatar_url || null,
       video_title: row.video_drafts?.title || "Untitled Video",
+      scheduled_publish_at: row.video_drafts?.scheduled_publish_at || null,
     }));
   } catch (err) {
     console.error("Error fetching publish history:", err);
