@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 
 export interface AuthState {
   error: string | null;
@@ -84,6 +85,35 @@ export async function signUp(
 
   revalidatePath("/", "layout");
   redirect("/dashboard");
+}
+
+/**
+ * Initiates Google OAuth sign in flow via Server Action.
+ */
+export async function signInWithGoogle(redirectTo: string = "/dashboard") {
+  const supabase = await createClient();
+  const headersList = await headers();
+  const host = headersList.get("host") || "localhost:3000";
+  const protocol =
+    headersList.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
+  const origin = `${protocol}://${host}`;
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+    },
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  if (data?.url) {
+    redirect(data.url);
+  }
+
+  return { error: "Failed to initialize Google authentication URL." };
 }
 
 /**
