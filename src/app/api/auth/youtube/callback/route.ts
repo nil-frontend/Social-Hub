@@ -41,8 +41,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(channelsUrl);
     }
 
+    // Extract matching client origin
+    const host =
+      request.headers.get("x-forwarded-host") ||
+      request.headers.get("host") ||
+      request.nextUrl.host;
+    const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
+    const origin = isLocal ? `http://${host}` : `https://${host}`;
+
     // 1. Exchange code for access & refresh tokens using matching redirect URI
-    const redirectUri = getRedirectUri(request.nextUrl.origin);
+    const redirectUri = getRedirectUri(origin);
     const tokens = await exchangeCodeForTokens(code, redirectUri);
 
     // 2. Fetch channel details from YouTube Data API v3
@@ -91,7 +99,7 @@ export async function GET(request: NextRequest) {
 
     // Clean up CSRF state cookie
     const successResponse = NextResponse.redirect(
-      new URL("/channels?connected=true", request.url)
+      new URL("/channels?success=channel_connected", request.url)
     );
     successResponse.cookies.delete("youtube_oauth_state");
 

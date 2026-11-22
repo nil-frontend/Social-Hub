@@ -19,10 +19,25 @@ export async function GET(request: NextRequest) {
     // Generate a secure random CSRF state nonce
     const state = crypto.randomBytes(24).toString("hex");
 
-    // Pass the exact origin of the incoming request (e.g. https://social-hub.nilstudio.dpdns.org)
-    const authUrl = getGoogleAuthUrl(state, request.nextUrl.origin);
+    // Extract real client origin respecting load balancer / proxy headers
+    const host =
+      request.headers.get("x-forwarded-host") ||
+      request.headers.get("host") ||
+      request.nextUrl.host;
+    const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
+    const origin = isLocal ? `http://${host}` : `https://${host}`;
+
+    const authUrl = getGoogleAuthUrl(state, origin);
 
     const response = NextResponse.redirect(authUrl);
+
+    // Prevent any browser or intermediary caching of this dynamic OAuth redirect
+    response.headers.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    );
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
 
     // Store state in an HttpOnly, secure cookie valid for 10 minutes
     response.cookies.set("youtube_oauth_state", state, {

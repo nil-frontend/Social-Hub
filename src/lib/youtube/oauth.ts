@@ -27,14 +27,24 @@ const REQUIRED_SCOPES = [
 
 /**
  * Returns the configured redirect URI for the YouTube OAuth callback.
- * Automatically ensures http:// or https:// scheme is present.
+ * Automatically enforces https:// for any public/production domain.
  */
 export function getRedirectUri(requestOrigin?: string): string {
-  let appUrl = requestOrigin || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  let appUrl = process.env.NEXT_PUBLIC_APP_URL || requestOrigin || "http://localhost:3000";
+  appUrl = appUrl.trim();
 
-  // If the user entered domain without protocol (e.g. social-hub.nilstudio.dpdns.org), prepend https://
-  if (!appUrl.startsWith("http://") && !appUrl.startsWith("https://")) {
-    appUrl = `https://${appUrl}`;
+  // If localhost or 127.0.0.1, keep http://
+  if (appUrl.includes("localhost") || appUrl.includes("127.0.0.1")) {
+    if (!appUrl.startsWith("http://") && !appUrl.startsWith("https://")) {
+      appUrl = `http://${appUrl}`;
+    }
+  } else {
+    // For all public domains (e.g. social-hub.nilstudio.dpdns.org), ALWAYS enforce https://
+    if (appUrl.startsWith("http://")) {
+      appUrl = appUrl.replace(/^http:\/\//, "https://");
+    } else if (!appUrl.startsWith("https://")) {
+      appUrl = `https://${appUrl}`;
+    }
   }
 
   return `${appUrl.replace(/\/$/, "")}/api/auth/youtube/callback`;
