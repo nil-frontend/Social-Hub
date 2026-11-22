@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppleButton } from "@/components/ui/apple/button";
 import { AppleCard } from "@/components/ui/apple/card";
 import { AppleBadge } from "@/components/ui/apple/badge";
+import { BrandIcon } from "@/components/ui/brand-logo";
 import { 
   Tv, 
   UploadCloud, 
@@ -18,6 +19,10 @@ export default function HomePage() {
     <div className="flex flex-col min-h-[calc(100vh-44px)]">
       {/* Hero Section: Apple Minimalist Style */}
       <section className="py-24 px-6 text-center max-w-5xl mx-auto flex flex-col items-center">
+        <div className="mb-6 flex items-center justify-center">
+          <BrandIcon size={68} className="shadow-apple-soft hover:scale-105 transition-transform" />
+        </div>
+
         <AppleBadge variant="youtube" className="mb-6">
           <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
           V1 YouTube Multi-Channel Support Live

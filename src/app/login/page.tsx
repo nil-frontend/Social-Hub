@@ -8,7 +8,8 @@ import { AppleCard } from "@/components/ui/apple/card";
 import { AppleInput } from "@/components/ui/apple/input";
 import { signIn, signUp } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/client";
-import { Share2, Lock, Mail, User, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { BrandIcon } from "@/components/ui/brand-logo";
+import { Lock, Mail, User, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -79,10 +80,8 @@ function LoginForm() {
   return (
     <div className="w-full max-w-md">
       {/* Brand Icon & Heading */}
-      <div className="text-center mb-8">
-        <div className="w-12 h-12 rounded-2xl bg-apple-black text-white mx-auto flex items-center justify-center mb-4 shadow-sm">
-          <Share2 className="w-6 h-6 text-apple-blue" />
-        </div>
+      <div className="text-center mb-8 flex flex-col items-center">
+        <BrandIcon size={56} className="mb-4 shadow-sm" />
         <h1 className="text-3xl font-semibold tracking-tight text-apple-ink">
           {mode === "signin" ? "Sign in to Social-Hub" : "Create your Account"}
         </h1>
