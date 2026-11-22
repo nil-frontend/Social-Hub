@@ -27,16 +27,23 @@ const REQUIRED_SCOPES = [
 
 /**
  * Returns the configured redirect URI for the YouTube OAuth callback.
+ * Automatically ensures http:// or https:// scheme is present.
  */
-export function getRedirectUri(): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+export function getRedirectUri(requestOrigin?: string): string {
+  let appUrl = requestOrigin || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  // If the user entered domain without protocol (e.g. social-hub.nilstudio.dpdns.org), prepend https://
+  if (!appUrl.startsWith("http://") && !appUrl.startsWith("https://")) {
+    appUrl = `https://${appUrl}`;
+  }
+
   return `${appUrl.replace(/\/$/, "")}/api/auth/youtube/callback`;
 }
 
 /**
  * Generates the Google OAuth 2.0 authorization URL with CSRF state nonce.
  */
-export function getGoogleAuthUrl(state: string): string {
+export function getGoogleAuthUrl(state: string, requestOrigin?: string): string {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId || clientId === "placeholder-google-client-id") {
     throw new Error(
@@ -44,9 +51,11 @@ export function getGoogleAuthUrl(state: string): string {
     );
   }
 
+  const redirectUri = getRedirectUri(requestOrigin);
+
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: getRedirectUri(),
+    redirect_uri: redirectUri,
     response_type: "code",
     scope: REQUIRED_SCOPES,
     access_type: "offline",
@@ -60,9 +69,13 @@ export function getGoogleAuthUrl(state: string): string {
 /**
  * Exchanges the authorization code received in the callback for access and refresh tokens.
  */
-export async function exchangeCodeForTokens(code: string): Promise<GoogleTokens> {
+export async function exchangeCodeForTokens(
+  code: string,
+  customRedirectUri?: string
+): Promise<GoogleTokens> {
   const clientId = process.env.GOOGLE_CLIENT_ID!;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
+  const redirectUri = customRedirectUri || getRedirectUri();
 
   const response = await fetch(GOOGLE_TOKEN_ENDPOINT, {
     method: "POST",
@@ -73,7 +86,7 @@ export async function exchangeCodeForTokens(code: string): Promise<GoogleTokens>
       code,
       client_id: clientId,
       client_secret: clientSecret,
-      redirect_uri: getRedirectUri(),
+      redirect_uri: redirectUri,
       grant_type: "authorization_code",
     }),
   });

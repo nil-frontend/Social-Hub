@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
     // Generate a secure random CSRF state nonce
     const state = crypto.randomBytes(24).toString("hex");
 
-    const authUrl = getGoogleAuthUrl(state);
+    // Pass the exact origin of the incoming request (e.g. https://social-hub.nilstudio.dpdns.org)
+    const authUrl = getGoogleAuthUrl(state, request.nextUrl.origin);
 
     const response = NextResponse.redirect(authUrl);
 

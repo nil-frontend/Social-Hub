@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { exchangeCodeForTokens, fetchChannelProfile } from "@/lib/youtube/oauth";
+import { exchangeCodeForTokens, fetchChannelProfile, getRedirectUri } from "@/lib/youtube/oauth";
 import { encryptToken } from "@/lib/crypto";
 
 export async function GET(request: NextRequest) {
@@ -41,8 +41,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(channelsUrl);
     }
 
-    // 1. Exchange code for access & refresh tokens
-    const tokens = await exchangeCodeForTokens(code);
+    // 1. Exchange code for access & refresh tokens using matching redirect URI
+    const redirectUri = getRedirectUri(request.nextUrl.origin);
+    const tokens = await exchangeCodeForTokens(code, redirectUri);
 
     // 2. Fetch channel details from YouTube Data API v3
     const profile = await fetchChannelProfile(tokens.access_token);
@@ -51,53 +52,53 @@ export async function GET(request: NextRequest) {
     const encryptedAccessToken = encryptToken(tokens.access_token);
     const encryptedRefreshToken = tokens.refresh_token
       ? encryptToken(tokens.refresh_token)
-      : null;
+      : undefined;
 
-    // Token expires in ~3600s; set 5-minute safety buffer
-    const tokenExpiresAt = new Date(Date.now() + (tokens.expires_in - 300) * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
-    // 4. Upsert channel record in Supabase social_accounts table
-    // If re-authorizing an existing channel, preserve existing refresh token if Google didn't return a new one
-    const updatePayload: Record<string, any> = {
+    // 4. Upsert channel into social_accounts table
+    const accountPayload: any = {
       user_id: user.id,
       platform: "youtube",
       platform_account_id: profile.id,
       account_name: profile.title,
-      account_avatar_url: profile.avatarUrl,
+      account_avatar_url: profile.avatarUrl || null,
       encrypted_access_token: encryptedAccessToken,
-      token_expires_at: tokenExpiresAt,
+      token_expires_at: expiresAt,
+      is_active: true,
       platform_metadata: {
-        subscriber_count: profile.subscriberCount,
         custom_url: profile.customUrl,
+        subscriber_count: profile.subscriberCount,
         description: profile.description,
       },
-      is_active: true,
       updated_at: new Date().toISOString(),
     };
 
     if (encryptedRefreshToken) {
-      updatePayload.encrypted_refresh_token = encryptedRefreshToken;
+      accountPayload.encrypted_refresh_token = encryptedRefreshToken;
     }
 
     const { error: upsertError } = await supabase
       .from("social_accounts")
-      .upsert(updatePayload, {
+      .upsert(accountPayload, {
         onConflict: "user_id,platform,platform_account_id",
       });
 
     if (upsertError) {
-      console.error("Supabase social_accounts upsert failed:", upsertError);
-      channelsUrl.searchParams.set("error", "database_save_failed");
-      return NextResponse.redirect(channelsUrl);
+      console.error("Database upsert failed:", upsertError);
+      throw upsertError;
     }
 
-    // Clear state cookie and redirect with success
-    const response = NextResponse.redirect(new URL("/channels?success=channel_connected", request.url));
-    response.cookies.delete("youtube_oauth_state");
-    return response;
+    // Clean up CSRF state cookie
+    const successResponse = NextResponse.redirect(
+      new URL("/channels?connected=true", request.url)
+    );
+    successResponse.cookies.delete("youtube_oauth_state");
+
+    return successResponse;
   } catch (err: any) {
-    console.error("YouTube OAuth callback error:", err);
-    channelsUrl.searchParams.set("error", encodeURIComponent(err?.message || "oauth_failed"));
+    console.error("Error completing YouTube OAuth connection:", err);
+    channelsUrl.searchParams.set("error", encodeURIComponent(err?.message || "channel_connect_failed"));
     return NextResponse.redirect(channelsUrl);
   }
 }
