@@ -4,6 +4,7 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { AppleCard } from "@/components/ui/apple/card";
 import { AppleBadge } from "@/components/ui/apple/badge";
 import { AppleButton } from "@/components/ui/apple/button";
+import { LocalTime } from "@/components/ui/local-time";
 import { getPublishHistory } from "@/app/actions/tasks";
 import { 
   Clock, 
@@ -127,7 +128,7 @@ export default async function HistoryPage() {
                               {task.channel_name}
                             </span>
                             <span>•</span>
-                            <span>{formattedDate}</span>
+                            <LocalTime date={task.created_at} />
                             {task.platform_video_id && (
                               <>
                                 <span>•</span>

@@ -32,7 +32,8 @@ export class ResumableUploader {
   public upload(
     file: File,
     uploadUrl: string,
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
+    taskId?: string
   ): Promise<UploadResult> {
     this.isAborted = false;
     this.lastLoaded = 0;
@@ -124,12 +125,51 @@ export class ResumableUploader {
         }
       };
 
-      xhr.onerror = () => {
+      xhr.onerror = async () => {
         if (this.isAborted) {
           reject(new Error("Upload was cancelled."));
-        } else {
-          reject(new Error("Network connection error during video upload."));
+          return;
         }
+
+        // If the upload transferred 90%+ or all bytes, verify completion with Google
+        if (this.lastLoaded >= file.size * 0.9) {
+          try {
+            const verifyRes = await fetch("/api/youtube/upload/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                uploadUrl,
+                fileSize: file.size,
+                taskId,
+              }),
+            });
+
+            if (verifyRes.ok) {
+              const verifyJson = await verifyRes.json();
+              if (verifyJson.verified && verifyJson.videoId) {
+                if (onProgress) {
+                  onProgress({
+                    percentage: 100,
+                    loaded: file.size,
+                    total: file.size,
+                    speedBytesPerSec: 0,
+                  });
+                }
+
+                resolve({
+                  videoId: verifyJson.videoId,
+                  videoUrl: verifyJson.videoUrl,
+                  rawResponse: verifyJson,
+                });
+                return;
+              }
+            }
+          } catch (verifyErr) {
+            console.warn("Upload verification failed:", verifyErr);
+          }
+        }
+
+        reject(new Error("Network connection error during video upload."));
       };
 
       xhr.onabort = () => {

@@ -4,6 +4,7 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { AppleCard } from "@/components/ui/apple/card";
 import { AppleButton } from "@/components/ui/apple/button";
 import { AppleBadge } from "@/components/ui/apple/badge";
+import { LocalTime } from "@/components/ui/local-time";
 import { getConnectedChannels } from "@/app/actions/channels";
 import { getPublishStats, getPublishHistory } from "@/app/actions/tasks";
 import { 
@@ -200,7 +201,7 @@ export default async function DashboardPage() {
                             <div className="flex items-center gap-2 text-xs text-apple-ink-muted">
                               <span className="truncate max-w-[150px]">{task.channel_name}</span>
                               <span>•</span>
-                              <span>{formattedDate}</span>
+                              <LocalTime date={task.created_at} format="short" />
                             </div>
                           </div>
                         </div>

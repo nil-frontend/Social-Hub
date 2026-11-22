@@ -56,7 +56,6 @@ export async function POST(request: NextRequest) {
     const accessToken = await getValidAccessToken(socialAccountId);
 
     // 3. Construct YouTube Data API v3 metadata payload
-    // Note: When scheduling with publishAt, privacyStatus MUST be "private"
     const isScheduled = Boolean(scheduledPublishAt);
     const videoStatus: Record<string, any> = {
       privacyStatus: isScheduled ? "private" : privacyStatus,
@@ -74,7 +73,15 @@ export async function POST(request: NextRequest) {
       categoryId: String(categoryId),
     };
 
-    // 4. Request Resumable Upload Session URI from Google
+    // 4. Determine Origin for CORS support in Google Resumable Upload
+    const host =
+      request.headers.get("x-forwarded-host") ||
+      request.headers.get("host") ||
+      request.nextUrl.host;
+    const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
+    const clientOrigin = isLocal ? `http://${host}` : `https://${host}`;
+
+    // 5. Request Resumable Upload Session URI from Google with Origin header for CORS
     const initResponse = await fetch(YOUTUBE_RESUMABLE_UPLOAD_INIT_URL, {
       method: "POST",
       headers: {
@@ -82,6 +89,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json; charset=UTF-8",
         "X-Upload-Content-Length": String(fileSize),
         "X-Upload-Content-Type": mimeType,
+        Origin: clientOrigin,
       },
       body: JSON.stringify({
         snippet: videoSnippet,

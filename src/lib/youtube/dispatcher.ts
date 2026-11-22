@@ -111,15 +111,20 @@ export async function dispatchMultiChannelUpload(
       }
 
       const uploader = new ResumableUploader();
-      const result = await uploader.upload(videoFile, uploadUrl, (prog) => {
-        progressMap[channel.id].percentage = prog.percentage;
-        progressMap[channel.id].speedBytesPerSec = prog.speedBytesPerSec;
-        onProgress({ ...progressMap });
+      const result = await uploader.upload(
+        videoFile,
+        uploadUrl,
+        (prog) => {
+          progressMap[channel.id].percentage = prog.percentage;
+          progressMap[channel.id].speedBytesPerSec = prog.speedBytesPerSec;
+          onProgress({ ...progressMap });
 
-        if (taskId && prog.percentage % 20 === 0) {
-          updatePublishTask(taskId, { progress_percent: prog.percentage });
-        }
-      });
+          if (taskId && prog.percentage % 20 === 0) {
+            updatePublishTask(taskId, { progress_percent: prog.percentage });
+          }
+        },
+        taskId
+      );
 
       const videoId = result.videoId;
       const videoUrl = result.videoUrl;
