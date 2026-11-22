@@ -5,7 +5,7 @@
 ```mermaid
 flowchart TD
     P1["Phase 1: Project Scaffolding & Apple Design System (Done)"] --> P2["Phase 2: Supabase Auth & Multi-Account Database Schema (Done)"]
-    P2 --> P3["Phase 3: YouTube OAuth & Channel Connection Engine"]
+    P2 --> P3["Phase 3: YouTube OAuth & Channel Connection Engine (Done)"]
     P3 --> P4["Phase 4: Resumable Video Upload & Streaming Pipeline"]
     P4 --> P5["Phase 5: Metadata Editor & Scheduled Publishing Engine"]
     P5 --> P6["Phase 6: Multi-Channel Orchestrator & Activity Dashboard"]
@@ -21,29 +21,29 @@ flowchart TD
 - [x] Verified zero-error Next.js production build with all routes prerendered.
 
 ### [x] Phase 2: Supabase Auth & Multi-Account Database Schema
-- [x] Initialize Supabase client for Next.js 15 (SSR / async cookie-based session handling in `client.ts`, `server.ts`, `admin.ts`).
+- [x] Initialize Supabase client for Next.js 15 (SSR / async cookie-based session handling).
 - [x] Create and execute PostgreSQL migrations in live Supabase database (`cpoufdzgjpqvxuanbpxj`):
-  - [x] `profiles` table linked to `auth.users` with automated signup trigger.
+  - [x] `profiles` table with automated trigger.
   - [x] `social_accounts` table (polymorphic design for `youtube`, `facebook`, `instagram`).
-  - [x] `video_drafts` table (title, description, tags, privacy, COPPA, schedule, thumbnail).
-  - [x] `publish_tasks` table (tracking per-channel upload status, progress, video IDs, error logs).
-  - [x] Row Level Security (RLS) policies verified active on 100% of tables (`rowsecurity: true`).
-- [x] AES-256-GCM token encryption & decryption utility for securing OAuth refresh tokens.
-- [x] Apple-styled Auth UI (`/login` with Sign In and Create Account segmented toggle).
-- [x] Next.js session middleware protecting `/dashboard`, `/channels`, `/upload`, `/history`.
-- [x] Dynamic authentication state and Sign Out integration in `GlobalNav`.
+  - [x] `video_drafts` table.
+  - [x] `publish_tasks` table.
+  - [x] Row Level Security (RLS) active and confirmed on all 4 tables (`rowsecurity: true`).
+- [x] AES-256-GCM token encryption & decryption utility.
+- [x] Apple-styled Auth UI (`/login`).
+- [x] Next.js session middleware protecting dashboard routes.
 
-### Phase 3: YouTube OAuth & Channel Connection Engine
-- Build Google OAuth 2.0 flow:
-  - Route handler `/api/auth/youtube/connect` generating authorization URL with `access_type=offline`, `prompt=consent`, and state validation.
-  - Route handler `/api/auth/youtube/callback` exchanging code for access and refresh tokens.
-  - Fetch channel profile via `youtube.channels.list(mine=true, part=snippet,statistics)`.
-  - Store encrypted tokens and channel metadata in `social_accounts`.
-- Build token refresh manager ensuring valid access tokens before upload calls.
-- Build "Connected Channels" page:
-  - Add Channel button.
-  - Grid of connected channels showing Channel Avatar, Title, Subscriber Count, and Disconnect button.
-  - Support connecting multiple channels seamlessly.
+### [x] Phase 3: YouTube OAuth & Channel Connection Engine
+- [x] Google OAuth 2.0 flow:
+  - [x] Route handler `/api/auth/youtube/connect` generating authorization URL with CSRF state cookie, `access_type=offline`, and `prompt=consent select_account` to easily link multiple channels.
+  - [x] Route handler `/api/auth/youtube/callback` exchanging code for access and refresh tokens.
+  - [x] Fetch channel profile via `youtube.channels.list(mine=true, part=snippet,statistics)`.
+  - [x] Encrypt tokens at rest and store channel metadata in `social_accounts`.
+- [x] Token refresh manager (`src/lib/youtube/token-manager.ts`) automatically detecting expired tokens and rotating with Google.
+- [x] Channel management server actions (`getConnectedChannels`, `disconnectChannel`, `toggleChannelActive`).
+- [x] Apple-styled "Connected Channels" page (`/channels`):
+  - [x] Multi-channel grid with avatars, handles, subscriber count badges, status toggles, and disconnect actions.
+  - [x] Setup banner warning if Google Cloud OAuth credentials need configuration.
+  - [x] Real-time channel metrics dynamically updated in `/dashboard`.
 
 ### Phase 4: Resumable Video Upload & Streaming Pipeline
 - Build client-side drag-and-drop file uploader component with preview:
