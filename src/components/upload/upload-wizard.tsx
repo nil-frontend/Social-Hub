@@ -12,6 +12,7 @@ import { ThumbnailPicker } from "@/components/upload/thumbnail-picker";
 import { TagInput } from "@/components/upload/tag-input";
 import { SchedulePicker } from "@/components/upload/schedule-picker";
 import { UploadProgressModal } from "@/components/upload/upload-progress-modal";
+import { DistributeConfirmModal } from "@/components/upload/distribute-confirm-modal";
 import { YOUTUBE_CATEGORIES } from "@/lib/youtube/categories";
 import { saveVideoDraft } from "@/app/actions/drafts";
 import { 
@@ -28,6 +29,7 @@ interface UploadWizardProps {
 export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
   const [isSavingDraft, startDraftTransition] = useTransition();
   const [isDispatching, setIsDispatching] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
   const [progressMap, setProgressMap] = useState<Record<string, ChannelUploadProgress>>({});
 
@@ -114,6 +116,7 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
   const handleDistribute = async () => {
     if (!videoFile || !title || selectedChannelIds.length === 0) return;
 
+    setIsConfirmModalOpen(false);
     setIsDispatching(true);
     setIsProgressModalOpen(true);
 
@@ -388,6 +391,56 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
               </div>
             </AppleCard>
           </section>
+
+          {/* Bottom Action Bar (Convenient Bottom Distribution) */}
+          <section className="p-5 rounded-2xl bg-apple-canvas border border-apple-hairline shadow-apple-soft flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-apple-blue/10 text-apple-blue flex items-center justify-center shrink-0">
+                <UploadCloud className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-[14px] font-semibold text-apple-ink tracking-tight">
+                  Ready to Distribute?
+                </h4>
+                <p className="text-xs text-apple-ink-muted">
+                  {!videoFile
+                    ? "Drop a video file above to start."
+                    : !title
+                    ? "Enter a video title to proceed."
+                    : selectedChannelIds.length === 0
+                    ? "Select target channels."
+                    : `Ready to distribute to ${selectedChannelIds.length} channel${
+                        selectedChannelIds.length !== 1 ? "s" : ""
+                      }.`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <AppleButton
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={handleSaveDraft}
+                isLoading={isSavingDraft}
+                disabled={!title || isDispatching}
+              >
+                <Bookmark className="w-4 h-4 mr-1" />
+                <span>Save Draft</span>
+              </AppleButton>
+
+              <AppleButton
+                type="button"
+                size="md"
+                onClick={() => setIsConfirmModalOpen(true)}
+                disabled={!videoFile || !title || isDispatching}
+                className="shadow-apple-soft"
+              >
+                <UploadCloud className="w-4 h-4 mr-1.5" />
+                <span>Distribute Video</span>
+              </AppleButton>
+            </div>
+          </section>
         </div>
 
         {/* Right Col: Channel Selector & Dispatch Action */}
@@ -483,7 +536,7 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
             )}
           </AppleCard>
 
-          {/* Upload Dispatch Action */}
+          {/* Upload Dispatch Action (Sidebar Summary) */}
           <AppleCard variant="canvas" className="p-6 shadow-apple-soft space-y-4">
             <h4 className="text-[15px] font-semibold text-apple-ink">
               Publishing Summary
@@ -519,8 +572,7 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
             <AppleButton
               className="w-full shadow-apple-soft"
               size="lg"
-              onClick={handleDistribute}
-              isLoading={isDispatching}
+              onClick={() => setIsConfirmModalOpen(true)}
               disabled={!videoFile || !title || selectedChannelIds.length === 0 || isDispatching}
             >
               <UploadCloud className="w-4 h-4 mr-1.5" />
@@ -535,6 +587,29 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
           </AppleCard>
         </div>
       </div>
+
+      {/* Confirmation & Channel Selection Modal */}
+      <DistributeConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={handleDistribute}
+        isDispatching={isDispatching}
+        videoFile={videoFile}
+        videoMetadata={videoMetadata}
+        thumbnailFile={thumbnailFile}
+        title={title}
+        description={description}
+        tags={tags}
+        categoryId={categoryId}
+        privacyStatus={privacyStatus}
+        isScheduled={isScheduled}
+        scheduledDateTime={scheduledDateTime}
+        channels={channels}
+        selectedChannelIds={selectedChannelIds}
+        onToggleChannel={toggleChannel}
+        onSelectAll={selectAllChannels}
+        onDeselectAll={deselectAllChannels}
+      />
 
       {/* Real-time Progress Modal */}
       <UploadProgressModal
