@@ -7,7 +7,7 @@ flowchart TD
     P1["Phase 1: Project Scaffolding & Apple Design System (Done)"] --> P2["Phase 2: Supabase Auth & Multi-Account Database Schema (Done)"]
     P2 --> P3["Phase 3: YouTube OAuth & Channel Connection Engine (Done)"]
     P3 --> P4["Phase 4: Resumable Video Upload & Streaming Pipeline (Done)"]
-    P4 --> P5["Phase 5: Metadata Editor & Scheduled Publishing Engine"]
+    P4 --> P5["Phase 5: Metadata Editor & Scheduled Publishing Engine (Done)"]
     P5 --> P6["Phase 6: Multi-Channel Orchestrator & Activity Dashboard"]
 ```
 
@@ -23,10 +23,7 @@ flowchart TD
 ### [x] Phase 2: Supabase Auth & Multi-Account Database Schema
 - [x] Initialize Supabase client for Next.js 15 (SSR / async cookie-based session handling).
 - [x] Create and execute PostgreSQL migrations in live Supabase database (`cpoufdzgjpqvxuanbpxj`):
-  - [x] `profiles` table with automated trigger.
-  - [x] `social_accounts` table (polymorphic design for `youtube`, `facebook`, `instagram`).
-  - [x] `video_drafts` table.
-  - [x] `publish_tasks` table.
+  - [x] `profiles`, `social_accounts`, `video_drafts`, `publish_tasks` tables.
   - [x] Row Level Security (RLS) active and confirmed on all 4 tables (`rowsecurity: true`).
 - [x] AES-256-GCM token encryption & decryption utility.
 - [x] Apple-styled Auth UI (`/login`).
@@ -40,25 +37,19 @@ flowchart TD
 - [x] Real-time channel metrics in overview dashboard.
 
 ### [x] Phase 4: Resumable Video Upload & Streaming Pipeline
-- [x] Server-side resumable upload session initializer:
-  - [x] Route handler `/api/youtube/upload/initiate` verifying channel ownership, rotating expired tokens via `getValidAccessToken()`, calling YouTube Data API `videos.insert(uploadType=resumable)`, and returning direct Google upload session URI.
-- [x] Client-side direct-to-Google streaming engine:
-  - [x] `ResumableUploader` class (`src/lib/youtube/resumable-uploader.ts`) using `XMLHttpRequest` for precise byte-level percentage tracking, upload speed calculation, abort control, and HTTP 308 resume recovery.
+- [x] Server-side resumable upload session initializer (`/api/youtube/upload/initiate`).
+- [x] Client-side direct-to-Google streaming engine (`ResumableUploader` class).
 - [x] Apple-styled media uploader UI:
-  - [x] `VideoDropzone` component (`src/components/upload/video-dropzone.tsx`) with drag-and-drop animation, format validation (MP4, MOV, WebM up to 1GB), in-browser `<video>` preview player, duration/resolution detection, and memory cleanup (`URL.revokeObjectURL`).
-  - [x] `ThumbnailPicker` component (`src/components/upload/thumbnail-picker.tsx`) with 16:9 aspect preview.
-  - [x] Integrated `UploadWizard` (`src/components/upload/upload-wizard.tsx`) into `/upload`.
+  - [x] `VideoDropzone` component with preview player and memory lifecycle cleanup.
+  - [x] `ThumbnailPicker` component for 16:9 images.
 
-### Phase 5: Metadata Editor & Scheduled Publishing Engine
-- Build comprehensive video details editor:
-  - Title input with character counter (max 100).
-  - Description textarea with character counter (max 5000).
-  - Tags input with badge/chip UI (max 500 chars).
-  - Category selector (Entertainment, Education, Gaming, Tech, etc.).
-  - Privacy status dropdown (Public, Unlisted, Private).
-  - COPPA compliance checkbox ("Yes, it's made for kids" / "No, not made for kids").
-  - Scheduled Release picker (Date + Time input, converts to ISO 8601 `publishAt` for YouTube when privacy is `private`).
-  - Custom thumbnail upload and association (`thumbnails.set` API).
+### [x] Phase 5: Metadata Editor & Scheduled Publishing Engine
+- [x] YouTube Category dictionary (`src/lib/youtube/categories.ts`) covering 14 standard categories.
+- [x] Custom thumbnail attachment route (`/api/youtube/thumbnail/set`) calling YouTube `thumbnails.set`, with graceful handling for unverified channels.
+- [x] Rich tag chip editor (`TagInput` component) enforcing 500-char combined limit.
+- [x] Scheduled date & time picker (`SchedulePicker` component) with local timezone formatting and ISO 8601 conversion.
+- [x] Video draft persistence server actions (`saveVideoDraft`, `getVideoDrafts`, `deleteVideoDraft`).
+- [x] Integrated `UploadWizard` with categories, tags, scheduling, and draft saving.
 
 ### Phase 6: Multi-Channel Orchestrator & Activity Dashboard
 - Implement Multi-Channel selector allowing creators to check which connected channels receive the video.

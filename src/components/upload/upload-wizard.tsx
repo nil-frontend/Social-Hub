@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AppleCard } from "@/components/ui/apple/card";
@@ -9,14 +9,20 @@ import { AppleBadge } from "@/components/ui/apple/badge";
 import { AppleInput, AppleTextarea } from "@/components/ui/apple/input";
 import { VideoDropzone, type VideoMetadata } from "@/components/upload/video-dropzone";
 import { ThumbnailPicker } from "@/components/upload/thumbnail-picker";
+import { TagInput } from "@/components/upload/tag-input";
+import { SchedulePicker } from "@/components/upload/schedule-picker";
+import { YOUTUBE_CATEGORIES } from "@/lib/youtube/categories";
+import { saveVideoDraft } from "@/app/actions/drafts";
 import type { SocialAccount } from "@/types/database";
-import { Tv, Check, Calendar, Plus, UploadCloud, AlertCircle } from "lucide-react";
+import { Tv, Check, Calendar, Plus, UploadCloud, Bookmark, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface UploadWizardProps {
   channels: SocialAccount[];
 }
 
 export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
+  const [isSavingDraft, startDraftTransition] = useTransition();
+
   const [selectedChannelIds, setSelectedChannelIds] = useState<string[]>(
     channels.filter((c) => c.is_active).map((c) => c.id)
   );
@@ -28,11 +34,14 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
   // Form Fields
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [tags, setTags] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [categoryId, setCategoryId] = useState("22"); // People & Blogs
   const [privacyStatus, setPrivacyStatus] = useState<"public" | "unlisted" | "private">("public");
   const [madeForKids, setMadeForKids] = useState(false);
   const [isScheduled, setIsScheduled] = useState(false);
   const [scheduledDateTime, setScheduledDateTime] = useState("");
+
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
 
   const toggleChannel = (channelId: string) => {
     setSelectedChannelIds((prev) =>
@@ -65,6 +74,30 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
     setVideoMetadata(null);
   };
 
+  const handleSaveDraft = () => {
+    if (!title) return;
+    startDraftTransition(async () => {
+      const res = await saveVideoDraft({
+        title,
+        description,
+        tags,
+        category_id: categoryId,
+        privacy_status: privacyStatus,
+        made_for_kids: madeForKids,
+        scheduled_publish_at: isScheduled && scheduledDateTime ? scheduledDateTime : null,
+        original_filename: videoFile?.name || null,
+        file_size_bytes: videoFile?.size || null,
+      });
+
+      if (res.error) {
+        setDraftNotice(`Error: ${res.error}`);
+      } else {
+        setDraftNotice("Draft saved to workspace successfully!");
+        setTimeout(() => setDraftNotice(null), 3000);
+      }
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -73,10 +106,29 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
             New Video Distribution
           </h2>
           <p className="text-[14px] text-apple-ink-muted">
-            Select channels, configure metadata, and stream directly to YouTube.
+            Select channels, configure rich metadata, and distribute directly to YouTube.
           </p>
         </div>
+
+        {/* Save Draft Action */}
+        <AppleButton
+          variant="secondary"
+          size="sm"
+          onClick={handleSaveDraft}
+          isLoading={isSavingDraft}
+          disabled={!title}
+        >
+          <Bookmark className="w-3.5 h-3.5" />
+          <span>Save Draft</span>
+        </AppleButton>
       </div>
+
+      {draftNotice && (
+        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200/60 text-xs text-emerald-800 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{draftNotice}</span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         {/* Left 2 Cols: Video Upload & Metadata */}
@@ -111,10 +163,10 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
           {/* Step 3: Video Details / Metadata Form */}
           <section className="space-y-4">
             <h3 className="text-[15px] font-semibold text-apple-ink">
-              3. Video Details
+              3. Video Details & Optimization
             </h3>
 
-            <AppleCard variant="canvas" className="p-6 space-y-4 shadow-apple-soft">
+            <AppleCard variant="canvas" className="p-6 space-y-5 shadow-apple-soft">
               {/* Title */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
@@ -130,7 +182,7 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
                   value={title}
                   maxLength={100}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Enter a descriptive video title"
+                  placeholder="Enter a descriptive video title (required)"
                 />
               </div>
 
@@ -149,74 +201,93 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
                   maxLength={5000}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Tell viewers about your video, links, and chapters..."
+                  placeholder="Tell viewers about your video, links, chapters, and credits..."
                 />
               </div>
 
-              {/* Tags */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-apple-ink">
-                  Tags (comma separated)
-                </label>
-                <AppleInput
-                  type="text"
-                  value={tags}
-                  onChange={(e) => setTags(e.target.value)}
-                  placeholder="e.g. podcast, tutorial, news"
-                />
-              </div>
+              {/* Rich Tag Chip Input */}
+              <TagInput tags={tags} onChange={setTags} maxTotalChars={500} />
 
-              {/* Privacy Status & COPPA */}
+              {/* Category, Privacy & COPPA Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                {/* Category Selection */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-apple-ink">
+                    YouTube Category
+                  </label>
+                  <select
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    className="w-full bg-apple-canvas text-apple-ink text-[14px] border border-apple-hairline rounded-xl px-3.5 py-2.5 outline-none focus:border-apple-blue-focus focus:ring-2 focus:ring-apple-blue/20 transition-all cursor-pointer"
+                  >
+                    {YOUTUBE_CATEGORIES.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Privacy Visibility */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-apple-ink">
                     Visibility Mode
                   </label>
                   <select
                     value={privacyStatus}
+                    disabled={isScheduled}
                     onChange={(e) => setPrivacyStatus(e.target.value as any)}
-                    className="w-full bg-apple-canvas text-apple-ink text-[14px] border border-apple-hairline rounded-xl px-3.5 py-2.5 outline-none focus:border-apple-blue-focus focus:ring-2 focus:ring-apple-blue/20 transition-all"
+                    className="w-full bg-apple-canvas text-apple-ink text-[14px] border border-apple-hairline rounded-xl px-3.5 py-2.5 outline-none focus:border-apple-blue-focus focus:ring-2 focus:ring-apple-blue/20 transition-all cursor-pointer disabled:opacity-60"
                   >
                     <option value="public">Public (Everyone can watch)</option>
                     <option value="unlisted">Unlisted (Anyone with link)</option>
                     <option value="private">Private (Only you)</option>
                   </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-apple-ink">
-                    Audience (COPPA)
-                  </label>
-                  <div className="flex items-center gap-2 pt-2">
-                    <input
-                      type="checkbox"
-                      id="madeForKids"
-                      checked={madeForKids}
-                      onChange={(e) => setMadeForKids(e.target.checked)}
-                      className="w-4 h-4 rounded text-apple-blue focus:ring-apple-blue cursor-pointer"
-                    />
-                    <label
-                      htmlFor="madeForKids"
-                      className="text-xs text-apple-ink-muted cursor-pointer"
-                    >
-                      This video is made for kids
-                    </label>
-                  </div>
+                  {isScheduled && (
+                    <p className="text-[10px] text-apple-blue">
+                      Visibility is locked to Private until scheduled release.
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Scheduled Release Toggle */}
-              <div className="pt-3 border-t border-apple-divider-soft">
+              {/* COPPA Compliance Checkbox */}
+              <div className="p-3.5 rounded-xl bg-apple-parchment/60 border border-apple-hairline flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="madeForKids"
+                  checked={madeForKids}
+                  onChange={(e) => setMadeForKids(e.target.checked)}
+                  className="w-4 h-4 mt-0.5 rounded text-apple-blue focus:ring-apple-blue cursor-pointer shrink-0"
+                />
+                <div>
+                  <label
+                    htmlFor="madeForKids"
+                    className="text-xs font-medium text-apple-ink cursor-pointer block"
+                  >
+                    This video is made for kids (COPPA)
+                  </label>
+                  <p className="text-[11px] text-apple-ink-muted leading-relaxed mt-0.5">
+                    Features like personalized ads, comments, and notifications will be turned off on YouTube.
+                  </p>
+                </div>
+              </div>
+
+              {/* Scheduled Release Section */}
+              <div className="pt-3 border-t border-apple-divider-soft space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-apple-blue" />
                     <span className="text-[13px] font-medium text-apple-ink">
-                      Schedule Release
+                      Schedule for Future Release
                     </span>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setIsScheduled(!isScheduled)}
+                    onClick={() => {
+                      setIsScheduled(!isScheduled);
+                      if (!isScheduled) setPrivacyStatus("private");
+                    }}
                     className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
                       isScheduled ? "bg-apple-blue" : "bg-apple-hairline"
                     }`}
@@ -230,17 +301,10 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
                 </div>
 
                 {isScheduled && (
-                  <div className="mt-3 p-3.5 rounded-xl bg-apple-pearl border border-apple-hairline space-y-2">
-                    <label className="text-xs text-apple-ink-muted block">
-                      Release Date & Time (Video will remain private until this time)
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={scheduledDateTime}
-                      onChange={(e) => setScheduledDateTime(e.target.value)}
-                      className="w-full bg-apple-canvas text-apple-ink text-[14px] border border-apple-hairline rounded-xl px-3 py-2 outline-none focus:border-apple-blue-focus"
-                    />
-                  </div>
+                  <SchedulePicker
+                    value={scheduledDateTime}
+                    onChange={setScheduledDateTime}
+                  />
                 )}
               </div>
             </AppleCard>
@@ -252,7 +316,7 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
           <AppleCard variant="canvas" className="p-6 shadow-apple-soft">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-[15px] font-semibold text-apple-ink">
-                Select Destination Channels
+                Target Channels
               </h4>
               <div className="flex items-center gap-2 text-[11px] text-apple-blue">
                 <button
@@ -355,6 +419,12 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
                 <span>Video:</span>
                 <span className="font-semibold text-apple-ink">
                   {videoFile ? videoFile.name.slice(0, 20) + "..." : "None"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Tags:</span>
+                <span className="font-semibold text-apple-ink">
+                  {tags.length} tag{tags.length !== 1 ? "s" : ""}
                 </span>
               </div>
               <div className="flex justify-between">
