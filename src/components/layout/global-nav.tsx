@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { signOut, getCurrentUser } from "@/app/actions/auth";
 import { BrandIcon } from "@/components/ui/brand-logo";
+import { UserNavDropdown } from "@/components/layout/user-nav-dropdown";
 
 export const GlobalNav = async () => {
   const user = await getCurrentUser();
@@ -13,7 +14,7 @@ export const GlobalNav = async () => {
     user?.user_metadata?.full_name ||
     user?.user_metadata?.name ||
     user?.email?.split("@")[0] ||
-    user?.email;
+    "Creator";
 
   return (
     <header className="sticky top-0 z-50 h-[44px] bg-apple-black text-white/90 backdrop-blur-md px-6 flex items-center justify-between border-b border-white/10 text-[12px] tracking-tight">
@@ -40,29 +41,20 @@ export const GlobalNav = async () => {
 
         <div className="flex items-center gap-3">
           {user ? (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-[12px] text-white/80">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt={displayName || "User avatar"}
-                    className="w-5 h-5 rounded-full object-cover border border-white/20"
-                  />
-                ) : (
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                )}
-                <span className="hidden sm:inline-block max-w-[140px] truncate">
-                  {displayName}
-                </span>
-              </div>
-              <form action={signOut}>
+            <div className="flex items-center gap-2.5">
+              <UserNavDropdown
+                email={user.email || ""}
+                displayName={displayName}
+                avatarUrl={avatarUrl}
+              />
+              <form action={signOut} className="hidden sm:block">
                 <button
                   type="submit"
                   className="flex items-center gap-1.5 text-[11px] bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white px-2.5 py-1 rounded-apple-pill transition-all cursor-pointer"
                   title="Sign Out"
                 >
                   <LogOut className="w-3 h-3" />
-                  <span className="hidden sm:inline">Sign Out</span>
+                  <span>Sign Out</span>
                 </button>
               </form>
             </div>
