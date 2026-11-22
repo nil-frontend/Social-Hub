@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart TD
-    P1["Phase 1: Project Scaffolding & Apple Design System (Done)"] --> P2["Phase 2: Supabase Auth & Multi-Account Database Schema"]
+    P1["Phase 1: Project Scaffolding & Apple Design System (Done)"] --> P2["Phase 2: Supabase Auth & Multi-Account Database Schema (Done)"]
     P2 --> P3["Phase 3: YouTube OAuth & Channel Connection Engine"]
     P3 --> P4["Phase 4: Resumable Video Upload & Streaming Pipeline"]
     P4 --> P5["Phase 5: Metadata Editor & Scheduled Publishing Engine"]
@@ -15,24 +15,23 @@ flowchart TD
 
 ### [x] Phase 1: Project Scaffolding & Apple Design System Setup
 - [x] Initialize Next.js 15 (App Router, TypeScript, React 19, Tailwind CSS v3).
-- [x] Configure Apple Design tokens from `DESIGN.md` in Tailwind theme:
-  - Colors: Action Blue (`#0066cc`), Parchment (`#f5f5f7`), Ink (`#1d1d1f`), Hairlines.
-  - Typography: SF Pro system font stack, display tracking, 17px body text.
-  - Components: Pill button variants, ghost pills, hairline cards, frosted sub-nav header.
+- [x] Configure Apple Design tokens from `DESIGN.md` in Tailwind theme.
 - [x] Scaffold base layout with global navigation, sidebar, and breadcrumbs.
 - [x] Set up environment variable schemas (`.env.example` and validation).
 - [x] Verified zero-error Next.js production build with all routes prerendered.
 
-### Phase 2: Supabase Auth & Multi-Account Database Schema
-- Initialize Supabase client for Next.js (SSR / cookie-based session handling).
-- Create PostgreSQL migrations in Supabase:
-  - `profiles` table linked to `auth.users`.
-  - `social_accounts` table (polymorphic design for `youtube`, `facebook`, `instagram`).
-  - `video_drafts` table (title, description, tags, privacy, COPPA, schedule, thumbnail).
-  - `publish_tasks` table (tracking per-channel upload status, progress, video IDs, error logs).
-  - Row Level Security (RLS) policies for strict tenant data isolation.
-- Implement Auth UI (Sign In, Sign Up, Password Reset) styled with Apple aesthetics.
-- Add Next.js auth middleware protecting dashboard routes.
+### [x] Phase 2: Supabase Auth & Multi-Account Database Schema
+- [x] Initialize Supabase client for Next.js 15 (SSR / async cookie-based session handling in `client.ts`, `server.ts`, `admin.ts`).
+- [x] Create and execute PostgreSQL migrations in live Supabase database (`cpoufdzgjpqvxuanbpxj`):
+  - [x] `profiles` table linked to `auth.users` with automated signup trigger.
+  - [x] `social_accounts` table (polymorphic design for `youtube`, `facebook`, `instagram`).
+  - [x] `video_drafts` table (title, description, tags, privacy, COPPA, schedule, thumbnail).
+  - [x] `publish_tasks` table (tracking per-channel upload status, progress, video IDs, error logs).
+  - [x] Row Level Security (RLS) policies verified active on 100% of tables (`rowsecurity: true`).
+- [x] AES-256-GCM token encryption & decryption utility for securing OAuth refresh tokens.
+- [x] Apple-styled Auth UI (`/login` with Sign In and Create Account segmented toggle).
+- [x] Next.js session middleware protecting `/dashboard`, `/channels`, `/upload`, `/history`.
+- [x] Dynamic authentication state and Sign Out integration in `GlobalNav`.
 
 ### Phase 3: YouTube OAuth & Channel Connection Engine
 - Build Google OAuth 2.0 flow:
