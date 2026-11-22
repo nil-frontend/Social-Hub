@@ -11,8 +11,13 @@ import { VideoDropzone, type VideoMetadata } from "@/components/upload/video-dro
 import { ThumbnailPicker } from "@/components/upload/thumbnail-picker";
 import { TagInput } from "@/components/upload/tag-input";
 import { SchedulePicker } from "@/components/upload/schedule-picker";
+import { UploadProgressModal } from "@/components/upload/upload-progress-modal";
 import { YOUTUBE_CATEGORIES } from "@/lib/youtube/categories";
 import { saveVideoDraft } from "@/app/actions/drafts";
+import { 
+  dispatchMultiChannelUpload, 
+  type ChannelUploadProgress 
+} from "@/lib/youtube/dispatcher";
 import type { SocialAccount } from "@/types/database";
 import { Tv, Check, Calendar, Plus, UploadCloud, Bookmark, CheckCircle2, AlertCircle } from "lucide-react";
 
@@ -22,6 +27,9 @@ interface UploadWizardProps {
 
 export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
   const [isSavingDraft, startDraftTransition] = useTransition();
+  const [isDispatching, setIsDispatching] = useState(false);
+  const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
+  const [progressMap, setProgressMap] = useState<Record<string, ChannelUploadProgress>>({});
 
   const [selectedChannelIds, setSelectedChannelIds] = useState<string[]>(
     channels.filter((c) => c.is_active).map((c) => c.id)
@@ -42,8 +50,10 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
   const [scheduledDateTime, setScheduledDateTime] = useState("");
 
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(null);
 
   const toggleChannel = (channelId: string) => {
+    if (isDispatching) return;
     setSelectedChannelIds((prev) =>
       prev.includes(channelId)
         ? prev.filter((id) => id !== channelId)
@@ -52,10 +62,12 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
   };
 
   const selectAllChannels = () => {
+    if (isDispatching) return;
     setSelectedChannelIds(channels.map((c) => c.id));
   };
 
   const deselectAllChannels = () => {
+    if (isDispatching) return;
     setSelectedChannelIds([]);
   };
 
@@ -63,7 +75,6 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
     setVideoFile(file);
     setVideoMetadata(meta);
     if (!title) {
-      // Auto-populate title from clean filename
       const cleanName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ");
       setTitle(cleanName.charAt(0).toUpperCase() + cleanName.slice(1));
     }
@@ -78,6 +89,7 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
     if (!title) return;
     startDraftTransition(async () => {
       const res = await saveVideoDraft({
+        id: currentDraftId || undefined,
         title,
         description,
         tags,
@@ -92,10 +104,64 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
       if (res.error) {
         setDraftNotice(`Error: ${res.error}`);
       } else {
+        if (res.draftId) setCurrentDraftId(res.draftId);
         setDraftNotice("Draft saved to workspace successfully!");
         setTimeout(() => setDraftNotice(null), 3000);
       }
     });
+  };
+
+  const handleDistribute = async () => {
+    if (!videoFile || !title || selectedChannelIds.length === 0) return;
+
+    setIsDispatching(true);
+    setIsProgressModalOpen(true);
+
+    try {
+      // 1. Auto-save or update draft in Supabase
+      const draftRes = await saveVideoDraft({
+        id: currentDraftId || undefined,
+        title,
+        description,
+        tags,
+        category_id: categoryId,
+        privacy_status: privacyStatus,
+        made_for_kids: madeForKids,
+        scheduled_publish_at: isScheduled && scheduledDateTime ? scheduledDateTime : null,
+        original_filename: videoFile.name,
+        file_size_bytes: videoFile.size,
+      });
+
+      const draftId = draftRes.draftId || currentDraftId;
+      if (draftId) setCurrentDraftId(draftId);
+
+      // 2. Select target channels
+      const targetChannels = channels.filter((c) => selectedChannelIds.includes(c.id));
+
+      // 3. Launch multi-channel resumable upload pipeline
+      await dispatchMultiChannelUpload({
+        videoFile,
+        thumbnailFile,
+        targetChannels,
+        metadata: {
+          title,
+          description,
+          tags,
+          categoryId,
+          privacyStatus,
+          madeForKids,
+          scheduledPublishAt: isScheduled && scheduledDateTime ? scheduledDateTime : null,
+          draftId,
+        },
+        onProgress: (newMap) => {
+          setProgressMap(newMap);
+        },
+      });
+    } catch (err: any) {
+      console.error("Distribution failed:", err);
+    } finally {
+      setIsDispatching(false);
+    }
   };
 
   return (
@@ -116,7 +182,7 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
           size="sm"
           onClick={handleSaveDraft}
           isLoading={isSavingDraft}
-          disabled={!title}
+          disabled={!title || isDispatching}
         >
           <Bookmark className="w-3.5 h-3.5" />
           <span>Save Draft</span>
@@ -145,6 +211,7 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
               selectedFile={videoFile}
               onFileSelect={handleVideoSelect}
               onFileRemove={handleVideoRemove}
+              disabled={isDispatching}
             />
           </section>
 
@@ -157,6 +224,7 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
               selectedThumbnail={thumbnailFile}
               onThumbnailSelect={setThumbnailFile}
               onThumbnailRemove={() => setThumbnailFile(null)}
+              disabled={isDispatching}
             />
           </section>
 
@@ -181,6 +249,7 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
                   type="text"
                   value={title}
                   maxLength={100}
+                  disabled={isDispatching}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Enter a descriptive video title (required)"
                 />
@@ -200,13 +269,19 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
                   rows={4}
                   maxLength={5000}
                   value={description}
+                  disabled={isDispatching}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Tell viewers about your video, links, chapters, and credits..."
                 />
               </div>
 
               {/* Rich Tag Chip Input */}
-              <TagInput tags={tags} onChange={setTags} maxTotalChars={500} />
+              <TagInput
+                tags={tags}
+                onChange={setTags}
+                maxTotalChars={500}
+                disabled={isDispatching}
+              />
 
               {/* Category, Privacy & COPPA Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
@@ -217,8 +292,9 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
                   </label>
                   <select
                     value={categoryId}
+                    disabled={isDispatching}
                     onChange={(e) => setCategoryId(e.target.value)}
-                    className="w-full bg-apple-canvas text-apple-ink text-[14px] border border-apple-hairline rounded-xl px-3.5 py-2.5 outline-none focus:border-apple-blue-focus focus:ring-2 focus:ring-apple-blue/20 transition-all cursor-pointer"
+                    className="w-full bg-apple-canvas text-apple-ink text-[14px] border border-apple-hairline rounded-xl px-3.5 py-2.5 outline-none focus:border-apple-blue-focus focus:ring-2 focus:ring-apple-blue/20 transition-all cursor-pointer disabled:opacity-60"
                   >
                     {YOUTUBE_CATEGORIES.map((cat) => (
                       <option key={cat.id} value={cat.id}>
@@ -235,7 +311,7 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
                   </label>
                   <select
                     value={privacyStatus}
-                    disabled={isScheduled}
+                    disabled={isScheduled || isDispatching}
                     onChange={(e) => setPrivacyStatus(e.target.value as any)}
                     className="w-full bg-apple-canvas text-apple-ink text-[14px] border border-apple-hairline rounded-xl px-3.5 py-2.5 outline-none focus:border-apple-blue-focus focus:ring-2 focus:ring-apple-blue/20 transition-all cursor-pointer disabled:opacity-60"
                   >
@@ -257,6 +333,7 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
                   type="checkbox"
                   id="madeForKids"
                   checked={madeForKids}
+                  disabled={isDispatching}
                   onChange={(e) => setMadeForKids(e.target.checked)}
                   className="w-4 h-4 mt-0.5 rounded text-apple-blue focus:ring-apple-blue cursor-pointer shrink-0"
                 />
@@ -284,6 +361,7 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
                   </div>
                   <button
                     type="button"
+                    disabled={isDispatching}
                     onClick={() => {
                       setIsScheduled(!isScheduled);
                       if (!isScheduled) setPrivacyStatus("private");
@@ -304,6 +382,7 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
                   <SchedulePicker
                     value={scheduledDateTime}
                     onChange={setScheduledDateTime}
+                    disabled={isDispatching}
                   />
                 )}
               </div>
@@ -322,7 +401,8 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
                 <button
                   type="button"
                   onClick={selectAllChannels}
-                  className="hover:underline"
+                  disabled={isDispatching}
+                  className="hover:underline disabled:opacity-50"
                 >
                   All
                 </button>
@@ -330,7 +410,8 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
                 <button
                   type="button"
                   onClick={deselectAllChannels}
-                  className="hover:underline"
+                  disabled={isDispatching}
+                  className="hover:underline disabled:opacity-50"
                 >
                   None
                 </button>
@@ -349,7 +430,7 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
                         isSelected
                           ? "border-apple-blue bg-apple-blue/5 shadow-apple-soft"
                           : "border-apple-hairline hover:bg-apple-parchment/60"
-                      }`}
+                      } ${isDispatching ? "opacity-75 cursor-not-allowed" : ""}`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-8 h-8 rounded-lg overflow-hidden bg-red-50 shrink-0 flex items-center justify-center">
@@ -438,16 +519,30 @@ export const UploadWizard: React.FC<UploadWizardProps> = ({ channels }) => {
             <AppleButton
               className="w-full shadow-apple-soft"
               size="lg"
-              disabled={!videoFile || !title || selectedChannelIds.length === 0}
+              onClick={handleDistribute}
+              isLoading={isDispatching}
+              disabled={!videoFile || !title || selectedChannelIds.length === 0 || isDispatching}
             >
               <UploadCloud className="w-4 h-4 mr-1.5" />
               <span>
-                Distribute to {selectedChannelIds.length} Channel{selectedChannelIds.length !== 1 ? "s" : ""}
+                {isDispatching
+                  ? "Distributing..."
+                  : `Distribute to ${selectedChannelIds.length} Channel${
+                      selectedChannelIds.length !== 1 ? "s" : ""
+                    }`}
               </span>
             </AppleButton>
           </AppleCard>
         </div>
       </div>
+
+      {/* Real-time Progress Modal */}
+      <UploadProgressModal
+        isOpen={isProgressModalOpen}
+        onClose={() => setIsProgressModalOpen(false)}
+        videoTitle={title}
+        progressMap={progressMap}
+      />
     </div>
   );
 };
