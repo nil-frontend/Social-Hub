@@ -8,6 +8,18 @@ export async function middleware(request: NextRequest) {
     },
   });
 
+  const protectedPrefixes = ["/dashboard", "/channels", "/upload", "/history"];
+  const pathname = request.nextUrl.pathname;
+  const isProtectedPath = protectedPrefixes.some((prefix) =>
+    pathname.startsWith(prefix)
+  );
+  const isLoginPath = pathname === "/login";
+
+  // Fast-path: Skip remote Supabase auth verification on public/unprotected paths
+  if (!isProtectedPath && !isLoginPath) {
+    return response;
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -39,25 +51,20 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh user session if expired
+  // Refresh user session if visiting protected route or login page
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const protectedPrefixes = ["/dashboard", "/channels", "/upload", "/history"];
-  const isProtectedPath = protectedPrefixes.some((prefix) =>
-    request.nextUrl.pathname.startsWith(prefix)
-  );
-
   // Redirect unauthenticated requests to /login
   if (isProtectedPath && !user) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("redirectTo", request.nextUrl.pathname);
+    loginUrl.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
   // Redirect authenticated requests away from /login to /dashboard
-  if (request.nextUrl.pathname === "/login" && user) {
+  if (isLoginPath && user) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

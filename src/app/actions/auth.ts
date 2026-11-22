@@ -4,11 +4,28 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { cache } from "react";
 
 export interface AuthState {
   error: string | null;
   success: string | null;
 }
+
+/**
+ * Cached per-request user lookup. Deduplicates multiple getUser() calls
+ * across GlobalNav, page components, and server actions within a single request.
+ */
+export const getCurrentUser = cache(async () => {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    return user;
+  } catch {
+    return null;
+  }
+});
 
 /**
  * Sign in an existing user with Email and Password.
@@ -124,15 +141,4 @@ export async function signOut() {
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
   redirect("/");
-}
-
-/**
- * Get currently authenticated user on the server.
- */
-export async function getCurrentUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/app/actions/auth";
 import { revalidatePath } from "next/cache";
 import type { PublishTask, PublishTaskStatus } from "@/types/database";
 
@@ -18,15 +19,12 @@ export async function createPublishTasks(params: {
   channelIds: string[];
 }): Promise<{ tasks: { id: string; social_account_id: string }[]; error: string | null }> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    const user = await getCurrentUser();
     if (!user) {
       return { tasks: [], error: "Unauthorized" };
     }
 
+    const supabase = await createClient();
     const { draftId, channelIds } = params;
 
     const taskInserts = channelIds.map((channelId) => ({
@@ -91,12 +89,10 @@ export async function updatePublishTask(
  */
 export async function getPublishHistory(): Promise<PublishTaskWithDetails[]> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    const user = await getCurrentUser();
     if (!user) return [];
+
+    const supabase = await createClient();
 
     const { data, error } = await supabase
       .from("publish_tasks")
@@ -139,35 +135,34 @@ export async function getPublishHistory(): Promise<PublishTaskWithDetails[]> {
 }
 
 /**
- * Fetches overview metrics for the dashboard.
+ * Fetches overview metrics for the dashboard in parallel using header count.
  */
 export async function getPublishStats(): Promise<{
   totalPublished: number;
   totalScheduled: number;
 }> {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    const user = await getCurrentUser();
     if (!user) return { totalPublished: 0, totalScheduled: 0 };
 
-    const { count: publishedCount, data: publishedData } = await supabase
-      .from("publish_tasks")
-      .select("id", { count: "exact" })
-      .eq("user_id", user.id)
-      .eq("status", "published");
+    const supabase = await createClient();
 
-    const { count: scheduledCount, data: scheduledData } = await supabase
-      .from("video_drafts")
-      .select("id", { count: "exact" })
-      .eq("user_id", user.id)
-      .not("scheduled_publish_at", "is", null);
+    const [publishedRes, scheduledRes] = await Promise.all([
+      supabase
+        .from("publish_tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "published"),
+      supabase
+        .from("video_drafts")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .not("scheduled_publish_at", "is", null),
+    ]);
 
     return {
-      totalPublished: publishedCount ?? publishedData?.length ?? 0,
-      totalScheduled: scheduledCount ?? scheduledData?.length ?? 0,
+      totalPublished: publishedRes.count ?? 0,
+      totalScheduled: scheduledRes.count ?? 0,
     };
   } catch (err) {
     console.error("Error fetching publish stats:", err);
